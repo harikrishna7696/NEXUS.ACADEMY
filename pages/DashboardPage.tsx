@@ -160,6 +160,44 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ state, onStartSkill, onSw
                Cross-domain analysis suggests healthy synapse formation between your active technical streams.
              </p>
            </div>
+
+           <div className="glass p-8 rounded-[3rem] border-white/5 space-y-6">
+             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Neural Uptime</h3>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Total Time</div>
+                 <div className="text-2xl font-space font-bold text-white">{state.totalTimeSpent} <span className="text-xs text-sky-400">min</span></div>
+               </div>
+               <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Streak</div>
+                 <div className="text-2xl font-space font-bold text-orange-500">{state.streak} <span className="text-xs">days</span></div>
+               </div>
+             </div>
+             
+             <div className="pt-4 border-t border-white/5">
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4">Activity Log (Last 7 Days)</div>
+                <div className="flex items-end gap-1.5 h-16">
+                  {[...Array(7)].map((_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (6 - i));
+                    const dateStr = d.toISOString().split('T')[0];
+                    const activity = state.activityLog.find(a => a.date === dateStr);
+                    const height = activity ? Math.min(100, (activity.timeSpent / 60) * 100) : 5;
+                    return (
+                      <div key={i} className="flex-1 bg-sky-500/20 rounded-t-sm relative group">
+                        <div 
+                          className="absolute bottom-0 left-0 w-full bg-sky-400 rounded-t-sm transition-all duration-1000" 
+                          style={{ height: `${height}%` }}
+                        ></div>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-[8px] text-white px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          {activity?.timeSpent || 0} min
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+             </div>
+           </div>
         </div>
       </div>
     </div>

@@ -27,7 +27,10 @@ const DEFAULT_STATE: AppState = {
   assessmentCurrentIndex: 0,
   enrollments: [],
   activeEnrollmentIndex: null,
-  streak: 0
+  streak: 0,
+  totalTimeSpent: 0,
+  lastLoginDate: null,
+  activityLog: []
 };
 
 const App: React.FC = () => {
@@ -57,6 +60,37 @@ const App: React.FC = () => {
     }
   }, [state]);
 
+  // Time tracking effect
+  useEffect(() => {
+    if (!state.user || state.currentStep === 'auth') return;
+
+    const interval = setInterval(() => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      setState(prev => {
+        const newActivityLog = [...prev.activityLog];
+        const todayIndex = newActivityLog.findIndex(a => a.date === today);
+        
+        if (todayIndex >= 0) {
+          newActivityLog[todayIndex] = {
+            ...newActivityLog[todayIndex],
+            timeSpent: newActivityLog[todayIndex].timeSpent + 1
+          };
+        } else {
+          newActivityLog.push({ date: today, timeSpent: 1 });
+        }
+
+        return {
+          ...prev,
+          totalTimeSpent: prev.totalTimeSpent + 1,
+          activityLog: newActivityLog
+        };
+      });
+    }, 60000); // Every minute
+
+    return () => clearInterval(interval);
+  }, [state.user, state.currentStep]);
+
   const activeEnrollment = state.activeEnrollmentIndex !== null ? state.enrollments[state.activeEnrollmentIndex] : null;
 
   const handleLogin = (username: string, isGuest: boolean) => {
@@ -64,12 +98,33 @@ const App: React.FC = () => {
     
     // Check if this user already has data in the vault
     const existingData = storageService.loadUserState(alias);
+    const today = new Date().toISOString().split('T')[0];
     
     if (existingData) {
+      let newStreak = existingData.streak || 0;
+      const lastLogin = existingData.lastLoginDate;
+      
+      if (lastLogin) {
+        const lastDate = new Date(lastLogin);
+        const currentDate = new Date(today);
+        const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          newStreak += 1;
+        } else if (diffDays > 1) {
+          newStreak = 1;
+        }
+      } else {
+        newStreak = 1;
+      }
+
       // Re-hydrate the existing user session
       setState({
         ...DEFAULT_STATE,
         ...existingData,
+        streak: newStreak,
+        lastLoginDate: today,
         currentStep: existingData.currentStep && existingData.currentStep !== 'auth' 
           ? existingData.currentStep 
           : 'dashboard'
@@ -85,6 +140,8 @@ const App: React.FC = () => {
       setState({
         ...DEFAULT_STATE,
         user: newUser,
+        streak: 1,
+        lastLoginDate: today,
         currentStep: 'dashboard'
       });
       storageService.logEvent(newUser.id, 'auth_new_profile', { isGuest });

@@ -62,6 +62,11 @@ export interface User {
   avatar?: string;
 }
 
+export interface DailyActivity {
+  date: string; // YYYY-MM-DD
+  timeSpent: number; // minutes
+}
+
 export interface AppState {
   currentStep: 'auth' | 'discovery' | 'assessment' | 'result' | 'roadmap' | 'dashboard' | 'session' | 'mentor' | 'arena';
   user: User | null;
@@ -78,4 +83,7 @@ export interface AppState {
   enrollments: Enrollment[];
   activeEnrollmentIndex: number | null;
   streak: number;
+  totalTimeSpent: number;
+  lastLoginDate: string | null;
+  activityLog: DailyActivity[];
 }
