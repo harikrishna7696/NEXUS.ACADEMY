@@ -7,7 +7,7 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    const apiKey = process.env.API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.warn("GEMINI_API_KEY is missing. AI features will be disabled.");
     }
@@ -17,7 +17,7 @@ export class GeminiService {
   }
 
   private checkApiKey() {
-    if (!process.env.API_KEY || process.env.API_KEY === 'MISSING_KEY') {
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'MISSING_KEY') {
       throw new Error("Gemini API key is not configured. Please add GEMINI_API_KEY to your environment variables.");
     }
   }
@@ -97,7 +97,7 @@ export class GeminiService {
     Use a conversational, encouraging, yet technically precise tone. Avoid long paragraphs. Use bullet points for tasks.`;
 
     const response = await this.ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

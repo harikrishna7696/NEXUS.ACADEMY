@@ -97,7 +97,7 @@ const App: React.FC = () => {
         setState(prev => ({ ...prev, assessmentQuestions: questions, currentStep: 'assessment' }));
       } catch (error) {
         console.error(error);
-        alert('Neural scan failed. Attempt reset.');
+        alert(`Neural scan failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
@@ -135,7 +135,7 @@ const App: React.FC = () => {
       if (state.user) storageService.logEvent(state.user.id, 'roadmap_deployed', { skill });
     } catch (error) {
       console.error(error);
-      alert('Architectural generation failed.');
+      alert(`Architectural generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
