@@ -72,6 +72,7 @@ export interface AppState {
   verifiedLevel: SkillLevel | null;
   assessmentQuestions: AssessmentQuestion[];
   assessmentResults: { questionId: string; selectedIndex: number; isCorrect: boolean }[];
+  assessmentCurrentIndex: number;
   
   // Persistence State
   enrollments: Enrollment[];

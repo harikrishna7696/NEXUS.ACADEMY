@@ -6,12 +6,13 @@ import { ICONS } from '../constants';
 interface AssessmentPageProps {
   skill: string;
   questions: AssessmentQuestion[];
+  currentIndex: number;
+  results: { questionId: string; selectedIndex: number; isCorrect: boolean }[];
+  onUpdate: (results: { questionId: string; selectedIndex: number; isCorrect: boolean }[], nextIndex: number) => void;
   onComplete: (results: { questionId: string; selectedIndex: number; isCorrect: boolean }[]) => void;
 }
 
-const AssessmentPage: React.FC<AssessmentPageProps> = ({ skill, questions, onComplete }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [results, setResults] = useState<{ questionId: string; selectedIndex: number; isCorrect: boolean }[]>([]);
+const AssessmentPage: React.FC<AssessmentPageProps> = ({ skill, questions, currentIndex, results, onUpdate, onComplete }) => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
 
   const safeQuestions = questions ?? [];
@@ -28,8 +29,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({ skill, questions, onCom
     }];
 
     if (currentIndex < safeQuestions.length - 1) {
-      setResults(newResults);
-      setCurrentIndex(currentIndex + 1);
+      onUpdate(newResults, currentIndex + 1);
       setSelectedOption(null);
     } else {
       onComplete(newResults);

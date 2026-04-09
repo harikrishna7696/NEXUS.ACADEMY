@@ -24,6 +24,7 @@ const DEFAULT_STATE: AppState = {
   verifiedLevel: null,
   assessmentQuestions: [],
   assessmentResults: [],
+  assessmentCurrentIndex: 0,
   enrollments: [],
   activeEnrollmentIndex: null,
   streak: 0
@@ -33,6 +34,21 @@ const App: React.FC = () => {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
+
+  // Re-hydrate session on mount
+  useEffect(() => {
+    const config = localStorage.getItem('nexus_global_config');
+    if (config) {
+      try {
+        const { lastUser } = JSON.parse(config);
+        if (lastUser) {
+          handleLogin(lastUser, false);
+        }
+      } catch (e) {
+        console.error("Failed to re-hydrate session", e);
+      }
+    }
+  }, []);
 
   // Auto-save whenever state changes AND a user is logged in
   useEffect(() => {
@@ -54,7 +70,9 @@ const App: React.FC = () => {
       setState({
         ...DEFAULT_STATE,
         ...existingData,
-        currentStep: 'dashboard' // Force go to dashboard upon successful sync
+        currentStep: existingData.currentStep && existingData.currentStep !== 'auth' 
+          ? existingData.currentStep 
+          : 'dashboard'
       });
       storageService.logEvent(existingData.user?.id || 'unknown', 'auth_sync_restored', { alias });
     } else {
@@ -104,6 +122,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAssessmentUpdate = (results: { questionId: string; selectedIndex: number; isCorrect: boolean }[], nextIndex: number) => {
+    setState(prev => ({ ...prev, assessmentResults: results, assessmentCurrentIndex: nextIndex }));
+  };
+
   const handleAssessmentComplete = (results: { questionId: string; selectedIndex: number; isCorrect: boolean }[]) => {
     const correctCount = results.filter(r => r.isCorrect).length;
     let verified = state.initialLevel;
@@ -114,7 +136,13 @@ const App: React.FC = () => {
       verified = currentIndex > 0 ? levels[currentIndex - 1] : SkillLevel.NO_IDEA;
     }
 
-    setState(prev => ({ ...prev, assessmentResults: results, verifiedLevel: verified, currentStep: 'result' }));
+    setState(prev => ({ 
+      ...prev, 
+      assessmentResults: results, 
+      verifiedLevel: verified, 
+      currentStep: 'result',
+      assessmentCurrentIndex: 0 // Reset for next time
+    }));
     if (state.user) storageService.logEvent(state.user.id, 'assessment_verified', { score: correctCount });
   };
 
@@ -263,7 +291,16 @@ const App: React.FC = () => {
               </div>
             )}
             {state.currentStep === 'discovery' && <DiscoveryPage onStart={handleStartDiscovery} />}
-            {state.currentStep === 'assessment' && <AssessmentPage questions={state.assessmentQuestions} onComplete={handleAssessmentComplete} skill={state.skillName} />}
+            {state.currentStep === 'assessment' && (
+              <AssessmentPage 
+                questions={state.assessmentQuestions} 
+                currentIndex={state.assessmentCurrentIndex}
+                results={state.assessmentResults}
+                onUpdate={handleAssessmentUpdate}
+                onComplete={handleAssessmentComplete} 
+                skill={state.skillName} 
+              />
+            )}
             {state.currentStep === 'result' && <ResultPage results={state.assessmentResults} initialLevel={state.initialLevel} verifiedLevel={state.verifiedLevel!} onProceed={handleGenerateRoadmap} />}
             {state.currentStep === 'roadmap' && activeEnrollment && <RoadmapPage roadmap={activeEnrollment.roadmap} activeDay={activeEnrollment.activeDay} onSelectDay={handleUpdateActiveDay} />}
             {state.currentStep === 'session' && activeEnrollment && (
