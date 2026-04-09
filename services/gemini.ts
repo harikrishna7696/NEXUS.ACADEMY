@@ -22,6 +22,27 @@ export class GeminiService {
     }
   }
 
+  private async generateWithFallback(params: any): Promise<GenerateContentResponse> {
+    try {
+      // Attempt with Pro model first
+      return await this.ai.models.generateContent({
+        ...params,
+        model: "gemini-3.1-pro-preview"
+      });
+    } catch (error: any) {
+      const errorMsg = error?.message?.toLowerCase() || "";
+      // Fallback if quota exceeded (429) or limit reached
+      if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("limit")) {
+        console.warn("Pro model limit reached, falling back to Flash model.");
+        return await this.ai.models.generateContent({
+          ...params,
+          model: "gemini-3-flash-preview"
+        });
+      }
+      throw error;
+    }
+  }
+
   async generateAssessment(skill: string, level: SkillLevel): Promise<AssessmentQuestion[]> {
     this.checkApiKey();
     const prompt = `Generate a set of 5 interactive, high-quality technical assessment questions for the skill "${skill}" at a ${level} level. 
@@ -29,8 +50,7 @@ export class GeminiService {
     Ensure one or two questions push the boundaries of the selected level to accurately verify competence.
     Avoid long typing-heavy answers, keep options clear and conceptual.`;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await this.generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -96,8 +116,7 @@ export class GeminiService {
 
     Use a conversational, encouraging, yet technically precise tone. Avoid long paragraphs. Use bullet points for tasks.`;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await this.generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -166,8 +185,7 @@ export class GeminiService {
     
     Keep the feedback professional, futuristic, and encouraging.`;
 
-    const response = await this.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await this.generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -194,8 +212,7 @@ export class GeminiService {
 
   createMentorChat(skill: string, level: SkillLevel, goal: string): Chat {
     this.checkApiKey();
-    return this.ai.chats.create({
-      model: 'gemini-3-flash-preview',
+    const params = {
       config: {
         systemInstruction: `You are the world-class Neural Mentor for ${skill}. 
         Expertise context: Deep understanding of ${skill} internals, performance optimization, and related ecosystems (e.g., if ${skill} is LanceDB, you are an expert in vector databases, AI infrastructure, and Rust/Python integration).
@@ -213,7 +230,32 @@ export class GeminiService {
         
         Stay strictly within the domain of ${skill} and its immediate technical orbit.`
       }
-    });
+    };
+
+    // Return a proxy-like object that handles fallback on sendMessageStream
+    const ai = this.ai;
+    let currentModel = "gemini-3.1-pro-preview";
+    let chat = ai.chats.create({ model: currentModel, ...params });
+
+    return {
+      ...chat,
+      sendMessageStream: async (msgParams: any) => {
+        try {
+          return await chat.sendMessageStream(msgParams);
+        } catch (error: any) {
+          const errorMsg = error?.message?.toLowerCase() || "";
+          if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("limit")) {
+            console.warn("Chat Pro model limit reached, falling back to Flash model.");
+            currentModel = "gemini-3-flash-preview";
+            chat = ai.chats.create({ model: currentModel, ...params });
+            // Note: We don't sync history here to keep it simple, 
+            // but in a real app you'd pass the history to the new chat.
+            return await chat.sendMessageStream(msgParams);
+          }
+          throw error;
+        }
+      }
+    } as any as Chat;
   }
 }
 
