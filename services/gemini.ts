@@ -7,11 +7,23 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    // Correct initialization as per Google GenAI SDK guidelines.
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is missing. AI features will be disabled.");
+    }
+    // Initialize with a dummy key if missing to prevent immediate crash, 
+    // but actual calls will fail which we handle in the methods.
+    this.ai = new GoogleGenAI({ apiKey: apiKey || 'MISSING_KEY' });
+  }
+
+  private checkApiKey() {
+    if (!process.env.API_KEY || process.env.API_KEY === 'MISSING_KEY') {
+      throw new Error("Gemini API key is not configured. Please add GEMINI_API_KEY to your environment variables.");
+    }
   }
 
   async generateAssessment(skill: string, level: SkillLevel): Promise<AssessmentQuestion[]> {
+    this.checkApiKey();
     const prompt = `Generate a set of 5 interactive, high-quality technical assessment questions for the skill "${skill}" at a ${level} level. 
     Focus on practical, scenario-based understanding rather than raw syntax. 
     Ensure one or two questions push the boundaries of the selected level to accurately verify competence.
@@ -55,6 +67,7 @@ export class GeminiService {
   }
 
   async generateRoadmap(skill: string, level: SkillLevel, duration: number, goal: string): Promise<LearningRoadmap> {
+    this.checkApiKey();
     const isNoIdea = level === SkillLevel.NO_IDEA;
     
     const prompt = `Act as an expert Learning Architect. Generate a ${duration}-day personalized, adaptive technical roadmap for learning "${skill}".
@@ -139,6 +152,7 @@ export class GeminiService {
 
   // Fix: Added nextStep to the return type of verifyChallenge to resolve the TypeScript error.
   async verifyChallenge(skill: string, concept: string, challenge: string, solution: string): Promise<{score: number, feedback: string, nextStep: string}> {
+    this.checkApiKey();
     const prompt = `Act as an elite technical interviewer. 
     Evaluate the following solution for a challenge about "${concept}" in the context of "${skill}".
     
@@ -179,6 +193,7 @@ export class GeminiService {
   }
 
   createMentorChat(skill: string, level: SkillLevel, goal: string): Chat {
+    this.checkApiKey();
     return this.ai.chats.create({
       model: 'gemini-3-flash-preview',
       config: {
